@@ -1,0 +1,982 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SSC GEO</title>
+<style>
+    :root {
+        --bg-color: #121212;
+        --surface-color: #1e1e1e;
+        --primary-cyan: #00e5ff;
+        --primary-blue: #2979ff;
+        --text-primary: #ffffff;
+        --text-secondary: #b3b3b3;
+        --border-color: #333333;
+        
+        --color-not-visited: #9e9e9e;
+        --color-not-answered: #f44336;
+        --color-answered: #4caf50;
+        --color-marked: #9c27b0;
+    }
+    
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    /* 100dvh prevents mobile browser URL bars from hiding the bottom elements */
+    body { background-color: var(--bg-color); color: var(--text-primary); height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
+    
+    /* Views */
+    .view { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+    .view.active { display: flex; }
+    
+    /* Landing Page */
+    .landing-container { max-width: 800px; margin: auto; padding: 40px 20px; text-align: center; overflow-y: auto; }
+    .landing-container h1 { color: var(--primary-cyan); font-size: 2rem; margin-bottom: 20px; }
+    .instructions { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 10px; padding: 25px; text-align: left; margin-bottom: 30px; line-height: 1.6; }
+    .instructions h3 { color: var(--primary-cyan); margin-bottom: 15px; }
+    .instructions ul { margin-left: 20px; }
+    .start-btn { background: var(--primary-blue); color: #fff; border: none; padding: 15px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.2s; text-transform: uppercase; }
+    .start-btn:hover { background: #1565c0; transform: scale(1.05); }
+
+    /* Header */
+    .header { background-color: var(--surface-color); border-bottom: 2px solid var(--primary-cyan); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; z-index: 50; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+    .header h1 { font-size: 1.2rem; font-weight: 600; color: var(--primary-cyan); }
+    .timer-container { font-size: 1.2rem; font-weight: bold; background: #2a2a2a; padding: 5px 15px; border-radius: 5px; border: 1px solid var(--primary-blue); }
+    
+    /* Mobile Top Bar (Toggle Palette & Submit) */
+    .mobile-top-bar { display: none; width: 100%; flex-shrink: 0; z-index: 40; border-bottom: 1px solid var(--border-color); }
+    .mobile-top-bar button { flex: 1; padding: 12px; border: none; font-weight: bold; font-size: 0.95rem; cursor: pointer; text-transform: uppercase; }
+    .btn-toggle-top { background: #2a2a2a; color: var(--primary-cyan); border-right: 1px solid var(--border-color) !important; }
+    .btn-submit-top { background: var(--color-answered); color: #fff; }
+
+    /* Main Layout */
+    .main-container { display: flex; flex: 1; overflow: hidden; position: relative; }
+    
+    /* Quiz Left Panel */
+    .quiz-left-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    
+    /* Question Scrolling Area */
+    .question-scroll-area { flex: 1; overflow-y: auto; padding: 20px; padding-bottom: 40px; }
+    .q-header { display: flex; justify-content: space-between; margin-bottom: 20px; font-weight: bold; font-size: 1.1rem; color: var(--primary-cyan); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
+    .question-text { font-size: 1.1rem; line-height: 1.6; margin-bottom: 15px; }
+    .question-tamil { font-size: 1.1rem; line-height: 1.6; color: var(--primary-cyan); margin-bottom: 25px; }
+    
+    .options-list { display: flex; flex-direction: column; gap: 12px; }
+    .option-label { display: flex; align-items: center; padding: 12px 15px; background: #2a2a2a; border: 1px solid var(--border-color); border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .option-label:hover { border-color: var(--primary-cyan); background: #333; }
+    .option-label input { margin-right: 15px; transform: scale(1.2); accent-color: var(--primary-cyan); }
+    
+    /* Pinned Action Buttons Footer */
+    .action-buttons { flex-shrink: 0; display: flex; flex-wrap: wrap; gap: 10px; padding: 15px 20px; background: var(--surface-color); border-top: 1px solid var(--border-color); z-index: 10; box-shadow: 0 -4px 10px rgba(0,0,0,0.3); }
+    .btn { padding: 10px 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; color: #fff; text-transform: uppercase; font-size: 0.85rem; display: flex; justify-content: center; align-items: center; text-align: center; }
+    .btn-prev { background: #424242; }
+    .btn-prev:hover { background: #616161; }
+    .btn-clear { background: #f44336; }
+    .btn-clear:hover { background: #d32f2f; }
+    .btn-mark { background: var(--color-marked); }
+    .btn-mark:hover { background: #7b1fa2; }
+    .btn-save { background: var(--primary-blue); margin-left: auto; }
+    .btn-save:hover { background: #1565c0; }
+
+    /* Palette Section */
+    .palette-section { width: 320px; background: var(--surface-color); border-left: 1px solid var(--border-color); display: flex; flex-direction: column; transition: transform 0.3s ease; flex-shrink: 0; }
+    .palette-header { padding: 15px; border-bottom: 1px solid var(--border-color); font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+    .palette-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px; overflow-y: auto; }
+    .q-bubble { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 0.9rem; color: #fff; background: var(--color-not-visited); border: 2px solid transparent; }
+    .q-bubble.active { border-color: var(--primary-cyan); transform: scale(1.1); box-shadow: 0 0 8px var(--primary-cyan); }
+    
+    .status-0 { background: var(--color-not-visited); color: #000; } 
+    .status-1 { background: var(--color-not-answered); } 
+    .status-2 { background: var(--color-answered); } 
+    .status-3 { background: var(--color-marked); } 
+    .status-4 { background: var(--color-marked); position: relative; } 
+    .status-4::after { content: ''; position: absolute; bottom: 2px; right: 2px; width: 8px; height: 8px; background: var(--color-answered); border-radius: 50%; border: 1px solid #fff; }
+
+    .legend { padding: 15px; font-size: 0.8rem; border-top: 1px solid var(--border-color); display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-box { width: 15px; height: 15px; border-radius: 3px; }
+    .btn-submit-desktop { background: var(--color-answered); width: 100%; padding: 12px; }
+
+    /* Custom Modals (No native alerts) */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; justify-content: center; align-items: center; padding: 20px; }
+    .modal-content { background: var(--surface-color); padding: 30px; border-radius: 10px; width: 100%; max-width: 500px; border: 1px solid var(--border-color); text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+    .modal-content h2 { color: var(--primary-cyan); margin-bottom: 20px; }
+    .modal-actions { display: flex; justify-content: center; gap: 15px; margin-top: 25px; }
+    
+    /* Results View */
+    .results-container { max-width: 900px; margin: auto; padding: 40px 20px; text-align: center; overflow-y: auto; width: 100%; }
+    .result-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 30px 0; }
+    .stat-box { background: #2a2a2a; padding: 20px; border-radius: 8px; border-bottom: 4px solid #666; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .stat-box.st-score { border-color: var(--primary-cyan); grid-column: span 2; }
+    .stat-box.st-correct { border-color: var(--color-answered); }
+    .stat-box.st-wrong { border-color: var(--color-not-answered); }
+    .stat-box h3 { font-size: 2.5rem; margin-bottom: 5px; }
+    .stat-box.st-score h3 { font-size: 3.5rem; color: var(--primary-cyan); }
+    
+    /* Tabbed Review Section */
+    #detailed-review-section { display: none; margin-top: 40px; }
+    .review-tabs { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
+    .tab-btn { background: #2a2a2a; border: 1px solid var(--border-color); color: var(--text-secondary); padding: 12px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; flex: 1; min-width: 110px; text-align: center; transition: 0.2s; }
+    .tab-btn:hover { background: #333; }
+    .tab-btn.active { color: #fff; border-bottom: 3px solid; }
+    .tab-btn[data-tab="correct"].active { border-color: var(--color-answered); background: rgba(76, 175, 80, 0.1); }
+    .tab-btn[data-tab="wrong"].active { border-color: var(--color-not-answered); background: rgba(244, 67, 54, 0.1); }
+    .tab-btn[data-tab="unattempted"].active { border-color: var(--color-not-visited); background: rgba(158, 158, 158, 0.1); }
+    
+    .tab-content { display: none; text-align: left; }
+    .tab-content.active { display: block; }
+    
+    .review-item { padding: 20px; background: #2a2a2a; margin-bottom: 15px; border-radius: 8px; border-left: 5px solid var(--border-color); }
+    .review-item.correct { border-left-color: var(--color-answered); }
+    .review-item.wrong { border-left-color: var(--color-not-answered); }
+    .review-item.unattempted { border-left-color: var(--color-not-visited); }
+    
+    .answer-tag { display: inline-block; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; margin-top: 10px; }
+    .tag-correct { background: rgba(76, 175, 80, 0.2); color: #81c784; border: 1px solid #4caf50; }
+    .tag-wrong { background: rgba(244, 67, 54, 0.2); color: #e57373; border: 1px solid #f44336; }
+    .tag-unattempted { background: rgba(158, 158, 158, 0.2); color: #e0e0e0; border: 1px solid #9e9e9e; }
+    
+    .explanation-box { margin-top: 12px; padding: 12px; background: #1e1e1e; border-radius: 5px; border-left: 3px solid var(--primary-cyan); font-size: 0.95rem; line-height: 1.5; color: #ddd; }
+
+    /* MOBILE SPECIFIC OVERRIDES */
+    @media (max-width: 768px) {
+        .mobile-top-bar { display: flex; }
+        .palette-section { position: absolute; top: 0; right: 0; height: 100%; transform: translateX(100%); z-index: 100; box-shadow: -5px 0 15px rgba(0,0,0,0.5); }
+        .palette-section.open { transform: translateX(0); }
+        
+        .result-grid { grid-template-columns: 1fr; }
+        .stat-box.st-score { grid-column: span 1; }
+        
+        .action-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            padding: 10px;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+        .btn-save { grid-column: span 2; margin-left: 0; padding: 15px; font-size: 1.1rem; order: 1; }
+        .btn-mark { order: 2; padding: 12px; }
+        .btn-clear { order: 3; padding: 12px; }
+        .btn-prev { grid-column: span 2; order: 4; padding: 12px; }
+    }
+</style>
+</head>
+<body>
+
+<!-- VIEW 1: Landing Page -->
+<div id="view-landing" class="view active">
+    <div class="landing-container">
+        <h1>GEO 2</h1>
+        <div class="instructions">
+            <h3>📝 Instructions:</h3>
+            <ul>
+                <li><strong>Total Questions:</strong> 50 (Bilingual: English & Tamil).</li>
+                <li><strong>Time Allotted:</strong> 15 Minutes.</li>
+                <li><strong>Marking Scheme:</strong> +1 mark for correct answers, <strong>-0.33 marks</strong> for incorrect answers.</li>
+                <li>Questions are shuffled automatically for every attempt.</li>
+                <li>Use the Question Palette to navigate. You can Mark questions for review.</li>
+                <li>Ensure you have a stable connection. Do not refresh the page during the exam.</li>
+            </ul>
+        </div>
+        <button class="start-btn" onclick="startQuiz()">I am ready to begin</button>
+    </div>
+</div>
+
+<!-- VIEW 2: Main Quiz -->
+<div id="view-quiz" class="view">
+    
+    <div class="header">
+        <h1>GEOGRAPHY 2</h1>
+        <div class="timer-container" id="timer">15:00</div>
+    </div>
+
+    <!-- Mobile Explicit Top Bar -->
+    <div class="mobile-top-bar">
+        <button class="btn-toggle-top" onclick="togglePalette()">☰ Question Palette</button>
+        <button class="btn-submit-top" onclick="showSubmitConfirm()">Submit Exam</button>
+    </div>
+
+    <div class="main-container">
+        
+        <!-- Question Panel (Scrollable content + Fixed Footer) -->
+        <div class="quiz-left-panel">
+            
+            <div class="question-scroll-area">
+                <div class="q-header">
+                    <span id="q-no">Question 1</span>
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Negative Marks: -0.33</span>
+                </div>
+                
+                <div class="question-text" id="q-text-en">Loading...</div>
+                <div class="question-tamil" id="q-text-ta">ஏற்றுகிறது...</div>
+                
+                <div class="options-list" id="options-container"></div>
+            </div>
+            
+            <!-- Fixed Action Buttons Footer -->
+            <div class="action-buttons">
+                <button class="btn btn-save" onclick="saveAndNext()">Save & Next ►</button>
+                <button class="btn btn-mark" onclick="markAndNext()">Mark & Next</button>
+                <button class="btn btn-clear" onclick="clearResponse()">Clear</button>
+                <button class="btn btn-prev" onclick="prevQuestion()">◄ Previous</button>
+            </div>
+            
+        </div>
+        
+        <!-- Collapsible Palette -->
+        <div class="palette-section" id="palette">
+            <div class="palette-header">
+                <span>Question Palette</span>
+                <button onclick="togglePalette()" class="btn btn-prev" style="padding: 5px; display: none;" id="close-palette-btn">X</button>
+            </div>
+            <div class="palette-grid" id="palette-grid"></div>
+            <div class="legend">
+                <div class="legend-item"><div class="legend-box status-2"></div> Answered</div>
+                <div class="legend-item"><div class="legend-box status-1"></div> Not Answered</div>
+                <div class="legend-item"><div class="legend-box status-0"></div> Not Visited</div>
+                <div class="legend-item"><div class="legend-box status-3"></div> Marked</div>
+                <div class="legend-item"><div class="legend-box status-4"></div> Ans & Marked</div>
+            </div>
+            <div style="padding: 15px;">
+                <button class="btn btn-submit btn-submit-desktop" onclick="showSubmitConfirm()">SUBMIT EXAM</button>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Custom Confirmation Modal -->
+<div class="modal-overlay" id="confirm-modal">
+    <div class="modal-content">
+        <h2>Submit Exam?</h2>
+        <p>Are you sure you want to submit? You will not be able to change your answers.</p>
+        <p id="unanswered-warning" style="color: var(--color-not-answered); margin-top: 10px; font-weight: bold; display: none;"></p>
+        <div class="modal-actions">
+            <button class="btn btn-prev" onclick="closeSubmitConfirm()">No, Go Back</button>
+            <button class="btn btn-submit" style="width: auto; margin-top: 0; padding: 10px 20px;" onclick="submitExam()">Yes, Submit</button>
+        </div>
+    </div>
+</div>
+
+<!-- VIEW 3: Results & Review -->
+<div id="view-results" class="view">
+    <div class="results-container">
+        <h1 style="color: var(--primary-cyan); font-size: 2.2rem; margin-bottom: 20px;">Exam Submitted Successfully</h1>
+        
+        <div class="result-grid">
+            <div class="stat-box st-score">
+                <div>Final Score</div>
+                <h3 id="res-score">0.00</h3>
+                <div style="color: var(--text-secondary); font-size: 0.9rem;">(Out of 50)</div>
+            </div>
+            <div class="stat-box st-correct">
+                <h3 id="res-correct">0</h3>
+                <div>Correct</div>
+            </div>
+            <div class="stat-box st-wrong">
+                <h3 id="res-wrong">0</h3>
+                <div>Incorrect</div>
+            </div>
+        </div>
+        
+        <p style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 25px;">Unattempted Questions: <strong id="res-unattempted" style="color: #fff;">0</strong></p>
+        
+        <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;" id="post-exam-actions">
+            <button class="btn btn-save" onclick="showDetailedReview()">View Detailed Review</button>
+            <button class="btn btn-prev" onclick="location.reload()">Restart Quiz</button>
+        </div>
+        
+        <!-- 3-Section Tabbed Review -->
+        <div id="detailed-review-section">
+            <h2 style="margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Test Review</h2>
+            
+            <div class="review-tabs">
+                <button class="tab-btn" data-tab="correct" onclick="switchTab('correct')">Correct (<span id="tab-count-correct">0</span>)</button>
+                <button class="tab-btn" data-tab="wrong" onclick="switchTab('wrong')">Incorrect (<span id="tab-count-wrong">0</span>)</button>
+                <button class="tab-btn" data-tab="unattempted" onclick="switchTab('unattempted')">Unattempted (<span id="tab-count-unattempted">0</span>)</button>
+            </div>
+            
+            <div id="review-content-correct" class="tab-content"></div>
+            <div id="review-content-wrong" class="tab-content"></div>
+            <div id="review-content-unattempted" class="tab-content"></div>
+        </div>
+        
+    </div>
+</div>
+
+<script>
+const baseQuizData = [
+    {
+        qE: "Which is the lowest layer of Earth's atmosphere where all weather phenomena occur?",
+        qT: "அனைத்து வானிலை நிகழ்வுகளும் நடைபெறும் பூமியின் வளிமண்டலத்தின் மிகக் கீழ் அடுக்கு எது?",
+        oE: ["Stratosphere", "Mesosphere", "Troposphere", "Thermosphere"],
+        oT: ["அடுக்குமண்டலம்", "இடைமண்டலம்", "அடிவளிமண்டலம்", "வெப்பமண்டலம்"],
+        a: 2,
+        exp: "The Troposphere is the lowest and densest layer of Earth's atmosphere, where all weather phenomena like rain, storms, and clouds occur."
+    },
+    {
+        qE: "Which gas constitutes the highest percentage by volume in Earth's atmosphere?",
+        qT: "பூமியின் வளிமண்டலத்தில் கன அளவின் அடிப்படையில் மிக அதிக சதவீதம் கொண்ட வாயு எது?",
+        oE: ["Nitrogen", "Oxygen", "Argon", "Carbon Dioxide"],
+        oT: ["நைட்ரஜன்", "ஆக்ஸிஜன்", "ஆர்கான்", "கார்பன் டை ஆக்சைடு"],
+        a: 0,
+        exp: "Nitrogen makes up 78.084% of Earth's atmosphere by volume, followed by Oxygen (20.946%) and Argon (0.934%)."
+    },
+    {
+        qE: "What is the standard lapse rate of temperature decrease per 1 km of altitude in the troposphere?",
+        qT: "அடிவளிமண்டலத்தில் ஒவ்வொரு 1 கி.மீ உயரத்திற்கும் வெப்பநிலை குறையும் இயல்பு வெப்பக் குறைவு விகிதம் எவ்வளவு?",
+        oE: ["4.5°C", "5.5°C", "7.5°C", "6.5°C"],
+        oT: ["4.5°C", "5.5°C", "7.5°C", "6.5°C"],
+        a: 3,
+        exp: "Under the standard lapse rate in the troposphere, temperature decreases by 1°C for every 165 meters, or 6.5°C per 1 km of ascent."
+    },
+    {
+        qE: "Which of the following is NOT a greenhouse gas?",
+        qT: "பின்வருவனவற்றில் எது பசுமை இல்ல வாயு அல்ல?",
+        oE: ["Methane", "Nitrogen Dioxide", "Nitrous Oxide", "Water Vapour"],
+        oT: ["மீத்தேன்", "நைட்ரஜன் டை ஆக்சைடு", "நைட்ரஸ் ஆக்சைடு", "நீராவி"],
+        a: 1,
+        exp: "Key greenhouse gases include Water Vapour, Carbon Dioxide, Methane, Nitrous Oxide, and Ozone. Nitrogen Dioxide is not a greenhouse gas."
+    },
+    {
+        qE: "The hot summer wind 'Loo' is a result of which heat transfer mechanism?",
+        qT: "'லூ' (Loo) என்ற வெப்பக் காற்று எந்த வெப்பப் பரிமாற்ற முறையின் விளைவாக உருவாகிறது?",
+        oE: ["Conduction", "Convection", "Advection", "Radiation"],
+        oT: ["வெப்பக் கடத்தல்", "வெப்பச் சலனம்", "கிடைமட்ட வெப்பப் பரிமாற்றம் (Advection)", "வெப்பக் கதிர்வீச்சு"],
+        a: 2,
+        exp: "Advection is the horizontal transfer of heat through the movement of air; the hot wind 'Loo' in northern India is an example of advection."
+    },
+    {
+        qE: "Which unit is used to measure the thickness of the ozone layer?",
+        qT: "ஓசோன் படலத்தின் தடிமனை அளவிடப் பயன்படும் அலகு எது?",
+        oE: ["Dobson Unit", "Decibel Unit", "Pascal Unit", "Richter Unit"],
+        oT: ["டாப்சன் அலகு", "டெசிபல் அலகு", "பாஸ்கல் அலகு", "ரிக்டர் அலகு"],
+        a: 0,
+        exp: "The thickness of the ozone layer in the stratosphere is measured in Dobson Units."
+    },
+    {
+        qE: "World Ozone Day is celebrated every year on which date to commemorate the Montreal Protocol?",
+        qT: "மாண்ட்ரீல் ஒப்பந்தத்தை நினைவுகூரும் வகையில் உலக ஓசோன் தினம் ஒவ்வொரு ஆண்டும் எந்தத் தேதியில் கொண்டாடப்படுகிறது?",
+        oE: ["5 June", "16 September", "22 April", "11 July"],
+        oT: ["ஜூன் 5", "செப்டம்பர் 16", "ஏப்ரல் 22", "ஜூலை 11"],
+        a: 1,
+        exp: "World Ozone Day is observed on 16 September to commemorate the signing of the Montreal Protocol in 1987 to phase out CFCs."
+    },
+    {
+        qE: "In which layer of the atmosphere do meteoroids burn up?",
+        qT: "விண்கற்கள் (Meteoroids) வளிமண்டலத்தின் எந்த அடுக்கில் எரிந்து சாம்பலாகின்றன?",
+        oE: ["Exosphere", "Troposphere", "Stratosphere", "Mesosphere"],
+        oT: ["வெளிமண்டலம்", "அடிவளிமண்டலம்", "அடுக்குமண்டலம்", "இடைமண்டலம்"],
+        a: 3,
+        exp: "The Mesosphere extends up to 85 km, is the coldest layer of the atmosphere (dropping to -100°C), and is where meteoroids burn up."
+    },
+    {
+        qE: "Which atmospheric layer reflects radio waves transmitted from the Earth back to the surface?",
+        qT: "பூமியிலிருந்து அனுப்பப்படும் ரேடியோ அலைகளை மீண்டும் பூமிக்குப் பிரதிபலிக்கும் வளிமண்டல அடுக்கு எது?",
+        oE: ["Thermosphere", "Stratosphere", "Mesosphere", "Troposphere"],
+        oT: ["வெப்பமண்டலம் (அயனமண்டலம்)", "அடுக்குமண்டலம்", "இடைமண்டலம்", "அடிவளிமண்டலம்"],
+        a: 0,
+        exp: "The Thermosphere, also known as the Ionosphere, contains electrically charged ions that reflect radio waves back to Earth."
+    },
+    {
+        qE: "What is the imaginary boundary at 100 km above sea level separating Earth's atmosphere from outer space called?",
+        qT: "கடல் மட்டத்திலிருந்து 100 கி.மீ உயரத்தில் பூமியின் வளிமண்டலத்தையும் விண்வெளியையும் பிரிக்கும் கற்பனை எல்லை எவ்வாறு அழைக்கப்படுகிறது?",
+        oE: ["Tropopause", "Stratopause", "Karman Line", "Isotherm Line"],
+        oT: ["ட்ரோபோபாஸ்", "ஸ்ட்ராடோபாஸ்", "கார்மன் கோடு", "சமவெப்பக் கோடு"],
+        a: 2,
+        exp: "The Karman Line is an imaginary boundary located 100 km (about 62 miles) above sea level that separates Earth's atmosphere from outer space."
+    },
+    {
+        qE: "Which is the most abundant metal found in the Earth's crust?",
+        qT: "பூமியின் மேலோட்டில் (Crust) மிக அதிகமாகக் காணப்படும் உலோகம் எது?",
+        oE: ["Iron", "Aluminium", "Calcium", "Sodium"],
+        oT: ["இரும்பு", "அலுமினியம்", "கால்சியம்", "சோடியம்"],
+        a: 1,
+        exp: "Aluminium (8.1%) is the most abundant metal in the Earth's crust, while Oxygen (46.6%) is the most abundant element overall."
+    },
+    {
+        qE: "The Mantle layer of the Earth is primarily composed of which two elements?",
+        qT: "பூமியின் கவசம் (Mantle) முதன்மையாக எந்த இரு தனிமங்களால் ஆனது?",
+        oE: ["Nickel and Iron", "Silica and Aluminium", "Iron and Magnesium", "Silica and Magnesium"],
+        oT: ["நிக்கல் மற்றும் இரும்பு", "சிலிக்கா மற்றும் அலுமினியம்", "இரும்பு மற்றும் மெக்னீசியம்", "சிலிக்கா மற்றும் மெக்னீசியம்"],
+        a: 3,
+        exp: "The Earth's Mantle is primarily composed of Silica and Magnesium (SiMa), whereas the Core is made of Nickel and Iron (NiFe)."
+    },
+    {
+        qE: "Which discontinuity separates the Earth's Crust from the Mantle?",
+        qT: "பூமியின் மேலோட்டையும் (Crust) கவசத்தையும் (Mantle) பிரிக்கும் எல்லை எது?",
+        oE: ["Moho Discontinuity", "Conrad Discontinuity", "Repetti Discontinuity", "Lehmann Discontinuity"],
+        oT: ["மோஹோ இடைவெளி", "கான்ராட் இடைவெளி", "ரெபெட்டி இடைவெளி", "லேமன் இடைவெளி"],
+        a: 0,
+        exp: "The Moho Discontinuity separates the Inner Crust from the Upper Mantle."
+    },
+    {
+        qE: "Which discontinuity lies between the Mantle and the Core of the Earth?",
+        qT: "பூமியின் கவசத்திற்கும் (Mantle) கருவிற்கும் (Core) இடையே உள்ள எல்லை எது?",
+        oE: ["Conrad Discontinuity", "Moho Discontinuity", "Gutenberg Discontinuity", "Repetti Discontinuity"],
+        oT: ["கான்ராட் இடைவெளி", "மோஹோ இடைவெளி", "குட்டன்பெர்க் இடைவெளி", "ரெபெட்டி இடைவெளி"],
+        a: 2,
+        exp: "The Gutenberg Discontinuity separates the Inner Mantle from the Outer Core, while the Lehmann Discontinuity separates the Outer Core from the Inner Core."
+    },
+    {
+        qE: "Who proposed the Convection Current Theory explaining the movement of tectonic plates?",
+        qT: "புவித்தட்டுகளின் நகர்வை விளக்கும் வெப்பச் சலன ஓட்டக் கோட்பாட்டை (Convection Current Theory) முன்வைத்தவர் யார்?",
+        oE: ["McKenzie", "Arthur Holmes", "Parker", "Alfred Wegener"],
+        oT: ["மெக்கென்சி", "ஆர்தர் ஹோம்ஸ்", "பார்க்கர்", "ஆல்ஃபிரட் வெஜெனர்"],
+        a: 1,
+        exp: "Arthur Holmes theorized that convection currents moving through the mantle act as the driving force behind plate movement."
+    },
+    {
+        qE: "What is the point on the Earth's surface directly above the earthquake's focus called?",
+        qT: "நிலநடுக்கம் உருவாகும் மையத்திற்கு (Focus) நேர் மேலே புவி மேற்பரப்பில் உள்ள புள்ளி எவ்வாறு அழைக்கப்படுகிறது?",
+        oE: ["Epicentre", "Hypocentre", "Fault Line", "Shadow Zone"],
+        oT: ["மேல்மையம் (Epicentre)", "கீழ்மையம் (Hypocentre)", "பிளவுக் கோடு", "நிழல் மண்டலம்"],
+        a: 0,
+        exp: "The Epicentre is the point on the Earth's surface directly above the underground origin of the earthquake, known as the Focus or Hypocentre."
+    },
+    {
+        qE: "Which type of seismic waves can travel ONLY through solid mediums?",
+        qT: "திடப் பொருட்களின் வழியாக மட்டுமே பயணிக்கக்கூடிய நிலநடுக்க அலைகள் எவை?",
+        oE: ["P-Waves", "Love Waves", "Rayleigh Waves", "S-Waves"],
+        oT: ["P-அலைகள்", "லவ் அலைகள்", "ரேலே அலைகள்", "S-அலைகள்"],
+        a: 3,
+        exp: "S-Waves (Secondary Waves) are transverse waves that can travel only through solids, whereas P-Waves can travel through solids, liquids, and gases."
+    },
+    {
+        qE: "Which scale is used to measure the intensity of an earthquake from 1 to 12?",
+        qT: "நிலநடுக்கத்தின் தீவிரத்தை (Intensity) 1 முதல் 12 வரை அளவிடப் பயன்படும் அளவுகோல் எது?",
+        oE: ["Richter Scale", "Beaufort Scale", "Mercalli Scale", "Mohs Scale"],
+        oT: ["ரிக்டர் அளவுகோல்", "பியூஃபோர்ட் அளவுகோல்", "மெர்காலி அளவுகோல்", "மோஸ் அளவுகோல்"],
+        a: 2,
+        exp: "The Mercalli Scale measures the intensity of an earthquake on a scale of 1 to 12, whereas the Richter Scale measures its magnitude."
+    },
+    {
+        qE: "Which is the highest active seismic zone in India?",
+        qT: "இந்தியாவில் மிக அதிக நிலநடுக்க அபாயம் உள்ள மண்டலம் எது?",
+        oE: ["Zone 2", "Zone 5", "Zone 3", "Zone 4"],
+        oT: ["மண்டலம் 2", "மண்டலம் 5", "மண்டலம் 3", "மண்டலம் 4"],
+        a: 1,
+        exp: "India is divided into four seismic zones (Zones 2, 3, 4, and 5), with Zone 5 being the highest seismic zone and Zone 2 the least active."
+    },
+    {
+        qE: "The 'Ring of Fire', a region prone to frequent earthquakes and volcanoes, surrounds which ocean?",
+        qT: "அதிக நிலநடுக்கங்கள் மற்றும் எரிமலைகள் கொண்ட 'நெருப்பு வளையம்' (Ring of Fire) எந்தப் பெருங்கடலைச் சுற்றி அமைந்துள்ளது?",
+        oE: ["Pacific Ocean", "Atlantic Ocean", "Indian Ocean", "Arctic Ocean"],
+        oT: ["பசிபிக் பெருங்கடல்", "அட்லாண்டிக் பெருங்கடல்", "இந்தியப் பெருங்கடல்", "ஆர்க்டிக் பெருங்கடல்"],
+        a: 0,
+        exp: "The Ring of Fire is a horseshoe-shaped, tectonically active zone surrounding the Pacific Ocean."
+    },
+    {
+        qE: "Which is the highest plateau in the world, also known as the 'Roof of the World'?",
+        qT: "'உலகின் கூரை' என்று அழைக்கப்படும் உலகின் மிக உயரமான பீடபூமி எது?",
+        oE: ["Deccan Plateau", "Malwa Plateau", "Chotanagpur Plateau", "Tibetan Plateau"],
+        oT: ["தக்காண பீடபூமி", "மால்வா பீடபூமி", "சோட்டாநாக்பூர் பீடபூமி", "திபெத்திய பீடபூமி"],
+        a: 3,
+        exp: "The Tibetan Plateau, with an elevation of about 4,500 meters, is the highest plateau in the world and is known as the 'Roof of the World'."
+    },
+    {
+        qE: "Which plateau is known as the 'Ruhr of India' due to its rich mineral deposits?",
+        qT: "வளமான கனிம வளங்கள் காரணமாக 'இந்தியாவின் ரூர்' (Ruhr of India) என்று அழைக்கப்படும் பீடபூமி எது?",
+        oE: ["Malwa Plateau", "Chotanagpur Plateau", "Deccan Plateau", "Bundelkhand Plateau"],
+        oT: ["மால்வா பீடபூமி", "சோட்டாநாக்பூர் பீடபூமி", "தக்காண பீடபூமி", "பண்டேல்கண்ட் பீடபூமி"],
+        a: 1,
+        exp: "The Chotanagpur Plateau is called the 'Ruhr of India' due to its vast mineral deposits, similar to Germany's Ruhr region."
+    },
+    {
+        qE: "Which is the highest peak of the Aravalli Range?",
+        qT: "ஆரவல்லி மலைத்தொடரின் மிக உயரமான சிகரம் எது?",
+        oE: ["Guru Shikhar", "Dhupgarh", "Parasnath", "Sadbhawna Shikhar"],
+        oT: ["குரு சிகார்", "தூப்கர்", "பராஸ்நாத்", "சத்பாவனா சிகார்"],
+        a: 0,
+        exp: "Guru Shikhar (1,722 m), located in the Mount Abu Hills of Rajasthan, is the highest peak of the Aravalli Range."
+    },
+    {
+        qE: "Panna in Madhya Pradesh, famous for its diamond mines, is located in which mountain range?",
+        qT: "வைரச் சுரங்கங்களுக்குப் புகழ்பெற்ற மத்தியப் பிரதேசத்தின் பன்னா (Panna) எந்த மலைத்தொடரில் அமைந்துள்ளது?",
+        oE: ["Aravalli Range", "Satpura Range", "Vindhya Range", "Maikal Range"],
+        oT: ["ஆரவல்லி மலைத்தொடர்", "சாத்புரா மலைத்தொடர்", "விந்திய மலைத்தொடர்", "மைக்கால் மலைத்தொடர்"],
+        a: 2,
+        exp: "Panna in Madhya Pradesh lies in the Vindhya Range and is famous for its diamond mines."
+    },
+    {
+        qE: "Which is the highest peak of the Satpura Range?",
+        qT: "சாத்புரா மலைத்தொடரின் மிக உயரமான சிகரம் எது?",
+        oE: ["Amarkantak", "Kalsubai", "Mahendragiri", "Dhupgarh"],
+        oT: ["அமர்கண்டக்", "கல்சுபாய்", "மகேந்திரகிரி", "தூப்கர்"],
+        a: 3,
+        exp: "Dhupgarh (1,350 m), situated in the Mahadeo Hills of Madhya Pradesh, is the highest peak of the Satpura Range."
+    },
+    {
+        qE: "Where do the Western Ghats and the Eastern Ghats meet?",
+        qT: "மேற்குத் தொடர்ச்சி மலைகளும் கிழக்குத் தொடர்ச்சி மலைகளும் எங்கு சந்திக்கின்றன?",
+        oE: ["Cardamom Hills", "Nilgiri Hills", "Annamalai Hills", "Palani Hills"],
+        oT: ["ஏலக்காய் மலைகள்", "நீலகிரி மலைகள்", "ஆனைமலை", "பழனி மலைகள்"],
+        a: 1,
+        exp: "The Western Ghats and Eastern Ghats converge at the Nilgiri Hills in Tamil Nadu."
+    },
+    {
+        qE: "Which is the highest peak of the Western Ghats?",
+        qT: "மேற்குத் தொடர்ச்சி மலையின் மிக உயரமான சிகரம் எது?",
+        oE: ["Anamudi", "Doddabetta", "Kalsubai", "Kudremukh"],
+        oT: ["ஆனைமுடி", "தொட்டபெட்டா", "கல்சுபாய்", "குதிரைமுக்"],
+        a: 0,
+        exp: "Anamudi (2,695 m), located in the Annamalai Hills of Kerala, is the highest peak of the Western Ghats, followed by Doddabetta (2,637 m)."
+    },
+    {
+        qE: "Which is the highest peak of the Eastern Ghats?",
+        qT: "கிழக்குத் தொடர்ச்சி மலையின் மிக உயரமான சிகரம் எது?",
+        oE: ["Mahendragiri", "Doddabetta", "Jindhagada", "Parasnath"],
+        oT: ["மகேந்திரகிரி", "தொட்டபெட்டா", "ஜிந்தகடா", "பராஸ்நாத்"],
+        a: 2,
+        exp: "Jindhagada (1,690 m) is the highest peak of the Eastern Ghats, followed by Mahendragiri (1,501 m) in Odisha."
+    },
+    {
+        qE: "Which pass in the Western Ghats connects Mumbai to Pune?",
+        qT: "மேற்குத் தொடர்ச்சி மலையில் மும்பையை புனேவுடன் இணைக்கும் கணவாய் எது?",
+        oE: ["Thal Ghat", "Pal Ghat", "Goram Ghat", "Bhor Ghat"],
+        oT: ["தால் காட்", "பால் காட்", "கோரம் காட்", "போர் காட்"],
+        a: 3,
+        exp: "Bhor Ghat connects Mumbai to Pune, whereas Thal Ghat connects Mumbai to Nasik and Pal Ghat connects Coimbatore to Palakkad."
+    },
+    {
+        qE: "The famous Borra Caves are situated in which hills of Andhra Pradesh?",
+        qT: "புகழ்பெற்ற போரா குகைகள் (Borra Caves) ஆந்திரப் பிரதேசத்தின் எந்த மலையில் அமைந்துள்ளன?",
+        oE: ["Seshachalam Hills", "Ananthagiri Hills", "Nallamala Hills", "Palkonda Range"],
+        oT: ["சேஷாசலம் மலைகள்", "அனந்தகிரி மலைகள்", "நல்லமலா மலைகள்", "பால்கொண்டா மலைத்தொடர்"],
+        a: 1,
+        exp: "Borra Caves are situated in the Ananthagiri Hills of Andhra Pradesh."
+    },
+    {
+        qE: "In which belt of the Northern Plains do rivers disappear underground due to coarse stones and pebbles?",
+        qT: "வடக்குச் சமவெளிகளின் எந்தப் பகுதியில் கற்கள் மற்றும் கூழாங்கற்களின் அதிக துளைத்தன்மை காரணமாக ஆறுகள் மறைந்து விடுகின்றன?",
+        oE: ["Bhabar", "Terai", "Bhangar", "Khadar"],
+        oT: ["பாபர்", "தெராய்", "பாங்கர்", "காதர்"],
+        a: 0,
+        exp: "Bhabar is a narrow 8–16 km porous belt south of the Shiwaliks where rivers deposit pebbles and disappear, later re-emerging in the marshy Terai belt."
+    },
+    {
+        qE: "What is the newly deposited, fertile alluvial soil renewed annually by river floods called?",
+        qT: "ஆற்று வெள்ளத்தால் ஆண்டுதோறும் புதுப்பிக்கப்படும் புதிய, வளமான வண்டல் மண் எவ்வாறு அழைக்கப்படுகிறது?",
+        oE: ["Bhangar", "Bhabar", "Khadar", "Terai"],
+        oT: ["பாங்கர்", "பாபர்", "காதர்", "தெராய்"],
+        a: 2,
+        exp: "Khadar is the new alluvial floodplain renewed every year by floods, making it more fertile than the older, kankar-rich Bhangar soil."
+    },
+    {
+        qE: "What are the famous backwaters along the Malabar Coast in Kerala locally called?",
+        qT: "கேரளாவின் மலபார் கடற்கரையில் உள்ள புகழ்பெற்ற காயல்கள் (Backwaters) உள்ளூரில் எவ்வாறு அழைக்கப்படுகின்றன?",
+        oE: ["Duars", "Duns", "Karewas", "Kayals"],
+        oT: ["துவார்ஸ்", "டூன்கள்", "கரேவாக்கள்", "காயல்கள் (Kayals)"],
+        a: 3,
+        exp: "The Western Coastal Plains, especially in Kerala, are famous for backwaters called Kayals, such as Punnamada Kayal where the Nehru Trophy Boat Race is held."
+    },
+    {
+        qE: "Which is the largest island in the Lakshadweep group of islands?",
+        qT: "லட்சத்தீவு கூட்டத்தின் மிகப்பெரிய தீவு எது?",
+        oE: ["Minicoy", "Andrott", "Kavaratti", "Agatti"],
+        oT: ["மினிகாய்", "ஆண்ட்ராட்", "கவரட்டி", "அகத்தி"],
+        a: 1,
+        exp: "Andrott Island is the largest island in Lakshadweep, while Minicoy is the second largest."
+    },
+    {
+        qE: "Which channel separates Little Andaman from Car Nicobar?",
+        qT: "சிறிய அந்தமானையும் கார் நிக்கோபாரையும் பிரிக்கும் கால்வாய் எது?",
+        oE: ["10° Channel", "9° Channel", "8° Channel", "11° Channel"],
+        oT: ["10° கால்வாய்", "9° கால்வாய்", "8° கால்வாய்", "11° கால்வாய்"],
+        a: 0,
+        exp: "The 10° Channel separates the Andaman group (Little Andaman) from the Nicobar group (Car Nicobar)."
+    },
+    {
+        qE: "Duncan Passage separates which two islands of the Andaman group?",
+        qT: "டங்கன் கணவாய் (Duncan Passage) அந்தமான் கூட்டத்தின் எந்த இரு தீவுகளைப் பிரிக்கிறது?",
+        oE: ["North Andaman and Middle Andaman", "Middle Andaman and South Andaman", "Little Andaman and Car Nicobar", "South Andaman and Little Andaman"],
+        oT: ["வடக்கு அந்தமான் மற்றும் மத்திய அந்தமான்", "மத்திய அந்தமான் மற்றும் தெற்கு அந்தமான்", "சிறிய அந்தமான் மற்றும் கார் நிக்கோபார்", "தெற்கு அந்தமான் மற்றும் சிறிய அந்தமான்"],
+        a: 3,
+        exp: "Duncan Passage separates South Andaman from Little Andaman."
+    },
+    {
+        qE: "Which island in Andaman and Nicobar was renamed as 'Swaraj Dweep'?",
+        qT: "அந்தமான் மற்றும் நிக்கோபாரில் உள்ள எந்தத் தீவு 'ஸ்வராஜ் தீவு' (Swaraj Dweep) எனப் பெயர் மாற்றப்பட்டது?",
+        oE: ["Ross Island", "Neil Island", "Havelock Island", "Barren Island"],
+        oT: ["ராஸ் தீவு", "நீல் தீவு", "ஹேவ்லாக் தீவு", "பாரன் தீவு"],
+        a: 2,
+        exp: "Havelock Island was renamed Swaraj Dweep, Neil Island as Shaheed Dweep, and Ross Island as Netaji Subhas Chandra Bose Island."
+    },
+    {
+        qE: "Which island in Andaman and Nicobar is India's active volcano?",
+        qT: "அந்தமான் மற்றும் நிக்கோபாரில் உள்ள இந்தியாவின் செயல்படும் எரிமலைத் தீவு எது?",
+        oE: ["Narcondam Island", "Barren Island", "Rutland Island", "Interview Island"],
+        oT: ["நார்கொண்டம் தீவு", "பாரன் தீவு", "ரட்லேண்ட் தீவு", "இன்டர்வியூ தீவு"],
+        a: 1,
+        exp: "Barren Island is an active volcano in the Andaman and Nicobar Islands, whereas Narcondam Island is a dormant volcano."
+    },
+    {
+        qE: "The cities of Mumbai and Thane are located on which island?",
+        qT: "மும்பை மற்றும் தானே நகரங்கள் எந்தத் தீவில் அமைந்துள்ளன?",
+        oE: ["Salsette Island", "Elephanta Island", "Diu Island", "Piram Bet Island"],
+        oT: ["சால்செட் தீவு", "எலிஃபண்டா தீவு", "டையூ தீவு", "பிரம் பெட் தீவு"],
+        a: 0,
+        exp: "Salsette Island off the west coast of Maharashtra is home to Mumbai and Thane, making it one of the most populous islands in the world."
+    },
+    {
+        qE: "Majuli, one of the largest riverine islands in the world, is located in which river?",
+        qT: "உலகின் மிகப்பெரிய ஆற்றுத் தீவுகளில் ஒன்றான மஜுலி (Majuli) எந்த ஆற்றில் அமைந்துள்ளது?",
+        oE: ["Ganga", "Kaveri", "Brahmaputra", "Narmada"],
+        oT: ["கங்கை", "காவிரி", "பிரம்மபுத்திரா", "நர்மதா"],
+        a: 2,
+        exp: "Majuli Island is located in the Brahmaputra River in Assam and is famous for its Vaishnavite monasteries."
+    },
+    {
+        qE: "The Himalayas were formed by the folding of sediments deposited in which ancient sea?",
+        qT: "எந்தப் பழமையான கடலில் படிந்த படிவுகள் மடிப்புற்றதால் இமயமலை உருவானது?",
+        oE: ["Panthalassa Sea", "Caspian Sea", "Sargasso Sea", "Tethys Sea"],
+        oT: ["பந்தலசா கடல்", "காஸ்பியன் கடல்", "சர்காசோ கடல்", "டெதிஸ் கடல்"],
+        a: 3,
+        exp: "The collision of the Indo-Australian and Eurasian tectonic plates closed the ancient Tethys Sea, uplifting its seabed sediments to form the Himalayas."
+    },
+    {
+        qE: "Which is the highest peak of the Karakoram Range?",
+        qT: "காரகோரம் மலைத்தொடரின் மிக உயரமான சிகரம் எது?",
+        oE: ["Nanga Parbat", "K2", "Kamet", "Rakaposhi"],
+        oT: ["நங்க பர்வதம்", "K2 (காட்வின் ஆஸ்டின்)", "காமெட்", "ரகபோஷி"],
+        a: 1,
+        exp: "K2, also known as Mt. Godwin-Austen (8,611 m), is the highest peak of the Karakoram Range and the second-highest peak in the world."
+    },
+    {
+        qE: "Which peak marks the easternmost point of the Greater Himalayas?",
+        qT: "பெரிய இமயமலையின் கிழக்குக் கோடி எல்லையாக அமைந்துள்ள சிகரம் எது?",
+        oE: ["Namcha Barwa", "Nanga Parbat", "Kanchenjunga", "Makalu"],
+        oT: ["நம்சா பர்வா", "நங்க பர்வதம்", "கஞ்சன்ஜங்கா", "மக்காலு"],
+        a: 0,
+        exp: "Namcha Barwa is the easternmost point of the Greater Himalayas showing syntaxial bending, while Nanga Parbat is its westernmost point."
+    },
+    {
+        qE: "What is Mount Everest locally known as in Nepal?",
+        qT: "எவரெஸ்ட் சிகரம் நேபாளத்தில் உள்ளூரில் எவ்வாறு அழைக்கப்படுகிறது?",
+        oE: ["Chomolungma", "Dhaulagiri", "Sagarmatha", "Annapurna"],
+        oT: ["சோமோலுங்மா", "தௌளகிரி", "சாகர்மாதா", "அன்னபூர்ணா"],
+        a: 2,
+        exp: "Mount Everest (8,848 m) is locally called Sagarmatha in Nepal and Chomolungma in Tibet."
+    },
+    {
+        qE: "Which is the highest Himalayan peak located in Sikkim, India?",
+        qT: "இந்தியாவின் சிக்கிம் மாநிலத்தில் அமைந்துள்ள மிக உயரமான இமயமலைச் சிகரம் எது?",
+        oE: ["Nanda Devi", "Kanchenjunga", "Kamet", "Lhotse"],
+        oT: ["நந்தா தேவி", "கஞ்சன்ஜங்கா", "காமெட்", "லோட்சே"],
+        a: 1,
+        exp: "Mt. Kanchenjunga (8,598 m) in Sikkim is the highest peak in India."
+    },
+    {
+        qE: "By what name are the Lesser Himalayas known in Jammu and Kashmir?",
+        qT: "சிறிய இமயமலை (Lesser Himalayas) ஜம்மு மற்றும் காஷ்மீரில் எவ்வாறு அழைக்கப்படுகிறது?",
+        oE: ["Dhauladhar Range", "Nagtibba Range", "Mahabharat Range", "Pir Panjal Range"],
+        oT: ["தௌலாதர் மலைத்தொடர்", "நாக்டிப்பா மலைத்தொடர்", "மகாபாரத் மலைத்தொடர்", "பீர் பாஞ்சால் மலைத்தொடர்"],
+        a: 3,
+        exp: "The Lesser Himalayas are known as Pir Panjal in J&K, Dhauladhar in Himachal Pradesh, Nagtibba in Uttarakhand, and Mahabharat Range in Nepal."
+    },
+    {
+        qE: "The Kumaon Himalayas lie between which two rivers?",
+        qT: "குமாவோன் இமயமலை எந்த இரு ஆறுகளுக்கு இடையே அமைந்துள்ளது?",
+        oE: ["Sutlej and Kali", "Indus and Sutlej", "Kali and Teesta", "Teesta and Dihang"],
+        oT: ["சட்லெஜ் மற்றும் காளி", "சிந்து மற்றும் சட்லெஜ்", "காளி மற்றும் தீஸ்தா", "தீஸ்தா மற்றும் திகாங்"],
+        a: 0,
+        exp: "Regionally, the Himalayas are divided into Punjab (Indus–Sutlej), Kumaon (Sutlej–Kali), Nepal (Kali–Teesta), and Assam (Teesta–Dihang) Himalayas."
+    },
+    {
+        qE: "Karewa formations in the Kashmir Valley are famous for the cultivation of which crop?",
+        qT: "காஷ்மீர் பள்ளத்தாக்கில் உள்ள கரேவா (Karewa) படிவுகள் எந்தப் பயிரின் சாகுபடிக்குப் புகழ்பெற்றவை?",
+        oE: ["Tea", "Cardamom", "Saffron", "Coffee"],
+        oT: ["தேயிலை", "ஏலக்காய்", "குங்குமப்பூ (Zafran)", "காபி"],
+        a: 2,
+        exp: "Karewas are glacial and lacustrine deposits in the Kashmir Valley used to cultivate Zafran, a local variety of Saffron."
+    },
+    {
+        qE: "Through which mountain pass does the Sutlej River enter India?",
+        qT: "சட்லெஜ் நதி எந்த மலைக் கணவாய் வழியாக இந்தியாவிற்குள் நுழைகிறது?",
+        oE: ["Zoji La", "Rohtang Pass", "Nathu La", "Shipki La"],
+        oT: ["ஜோஜி லா", "ரோஹ்தாங் கணவாய்", "நாது லா", "ஷிப்கி லா"],
+        a: 3,
+        exp: "Shipki La Pass connects Kinnaur district in Himachal Pradesh to Tibet, and the Sutlej River enters India through this pass."
+    },
+    {
+        qE: "Which is the world's only floating National Park, located on Loktak Lake in Manipur?",
+        qT: "மணிப்பூரின் லோக்தாக் ஏரியில் அமைந்துள்ள உலகின் ஒரே மிதக்கும் தேசிய பூங்கா எது?",
+        oE: ["Dudhwa National Park", "Keibul Lamjao National Park", "Valmiki National Park", "Campbell Bay National Park"],
+        oT: ["துத்வா தேசிய பூங்கா", "கெய்புல் லாம்ஜாவோ தேசிய பூங்கா", "வால்மீகி தேசிய பூங்கா", "கேம்ப்பெல் பே தேசிய பூங்கா"],
+        a: 1,
+        exp: "Keibul Lamjao National Park on Loktak Lake in Manipur is the world's only floating national park."
+    }
+];
+let quizData = [];
+let currentQ = 0;
+let answers = [];
+let status = []; // 0: Not Visited, 1: Not Answered, 2: Answered, 3: Marked, 4: Answered & Marked
+
+// Shuffle array algorithm
+function shuffleArray(array) {
+    let shuffled = array.slice();
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+}
+
+// Switch Views
+function switchView(viewId) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(viewId).classList.add('active');
+}
+
+function startQuiz() {
+    quizData = shuffleArray(baseQuizData);
+    answers = new Array(50).fill(null);
+    status = new Array(50).fill(0);
+    
+    switchView('view-quiz');
+    
+    buildPalette();
+    loadQuestion(0);
+    startTimer();
+    
+    if(window.innerWidth <= 768) {
+        document.getElementById('close-palette-btn').style.display = 'block';
+    }
+}
+
+function buildPalette() {
+    const grid = document.getElementById('palette-grid');
+    grid.innerHTML = '';
+    for(let i=0; i<50; i++) {
+        let bubble = document.createElement('div');
+        bubble.className = 'q-bubble status-' + status[i];
+        bubble.innerText = (i+1);
+        bubble.id = 'pb-' + i;
+        bubble.onclick = () => jumpToQuestion(i);
+        grid.appendChild(bubble);
+    }
+}
+
+function syncAnswer() {
+    let selected = document.querySelector('input[name="opt"]:checked');
+    if(selected) {
+        answers[currentQ] = parseInt(selected.value);
+    } else {
+        answers[currentQ] = null;
+    }
+}
+
+function updatePaletteCSS() {
+    for(let i=0; i<50; i++) {
+        let bubble = document.getElementById('pb-' + i);
+        bubble.className = 'q-bubble status-' + status[i];
+        if(i === currentQ) bubble.classList.add('active');
+    }
+}
+
+function loadQuestion(index) {
+    if(status[currentQ] === 0) {
+        status[currentQ] = (answers[currentQ] !== null) ? 2 : 1;
+    }
+    
+    currentQ = index;
+    if(status[currentQ] === 0) status[currentQ] = 1;
+
+    document.getElementById('q-no').innerText = "Question " + (currentQ + 1);
+    
+    // Format statement questions with line breaks
+    let qTextEn = quizData[currentQ].qE.replace(/\n/g, "<br>");
+    let qTextTa = quizData[currentQ].qT.replace(/\n/g, "<br>");
+    
+    document.getElementById('q-text-en').innerHTML = qTextEn;
+    document.getElementById('q-text-ta').innerHTML = qTextTa;
+
+    let optHtml = '';
+    for(let i=0; i<4; i++) {
+        let checked = (answers[currentQ] === i) ? 'checked' : '';
+        optHtml += `
+            <label class="option-label">
+                <input type="radio" name="opt" value="${i}" ${checked} onchange="syncAnswer()">
+                <div>
+                    <div>${quizData[currentQ].oE[i]}</div>
+                    <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 4px;">${quizData[currentQ].oT[i]}</div>
+                </div>
+            </label>
+        `;
+    }
+    document.getElementById('options-container').innerHTML = optHtml;
+    
+    // Clear scroll position to top of container when moving to a new question
+    document.querySelector('.question-scroll-area').scrollTop = 0;
+    
+    updatePaletteCSS();
+}
+
+function jumpToQuestion(i) {
+    syncAnswer();
+    loadQuestion(i);
+    if(window.innerWidth <= 768) togglePalette();
+}
+
+function saveAndNext() {
+    syncAnswer();
+    status[currentQ] = (answers[currentQ] !== null) ? 2 : 1;
+    if(currentQ < 49) loadQuestion(currentQ + 1);
+    else updatePaletteCSS();
+}
+
+function markAndNext() {
+    syncAnswer();
+    status[currentQ] = (answers[currentQ] !== null) ? 4 : 3;
+    if(currentQ < 49) loadQuestion(currentQ + 1);
+    else updatePaletteCSS();
+}
+
+function clearResponse() {
+    answers[currentQ] = null;
+    status[currentQ] = 1;
+    loadQuestion(currentQ);
+}
+
+function prevQuestion() {
+    syncAnswer();
+    if(currentQ > 0) loadQuestion(currentQ - 1);
+}
+
+function togglePalette() {
+    document.getElementById('palette').classList.toggle('open');
+}
+
+// Timer Logic
+let timeLimit = 15 * 60; // 15 mins
+let timerInterval;
+
+function startTimer() {
+    timerInterval = setInterval(() => {
+        timeLimit--;
+        let m = Math.floor(timeLimit / 60).toString().padStart(2, '0');
+        let s = (timeLimit % 60).toString().padStart(2, '0');
+        document.getElementById('timer').innerText = m + ':' + s;
+        if(timeLimit <= 0) {
+            clearInterval(timerInterval);
+            submitExam();
+        }
+    }, 1000);
+}
+
+// Custom Submit Modals
+function showSubmitConfirm() {
+    syncAnswer();
+    let unattempted = answers.filter(a => a === null).length;
+    let warningTxt = document.getElementById('unanswered-warning');
+    if(unattempted > 0) {
+        warningTxt.innerText = `You have ${unattempted} unattempted questions!`;
+        warningTxt.style.display = 'block';
+    } else {
+        warningTxt.style.display = 'none';
+    }
+    document.getElementById('confirm-modal').style.display = 'flex';
+}
+
+function closeSubmitConfirm() {
+    document.getElementById('confirm-modal').style.display = 'none';
+}
+
+function submitExam() {
+    clearInterval(timerInterval);
+    document.getElementById('confirm-modal').style.display = 'none';
+    syncAnswer();
+    
+    let correct = 0, wrong = 0, unattempted = 0;
+    
+    quizData.forEach((q, i) => {
+        if(answers[i] === null) unattempted++;
+        else if(answers[i] === q.a) correct++;
+        else wrong++;
+    });
+    
+    let score = correct - (wrong * 0.3333);
+    
+    document.getElementById('res-score').innerText = score.toFixed(2);
+    document.getElementById('res-correct').innerText = correct;
+    document.getElementById('res-wrong').innerText = wrong;
+    document.getElementById('res-unattempted').innerText = unattempted;
+    
+    switchView('view-results');
+}
+
+// Detailed Review with Tabs
+function showDetailedReview() {
+    let htmlCorrect = '';
+    let htmlWrong = '';
+    let htmlUnattempted = '';
+    
+    quizData.forEach((q, i) => {
+        let isAttempted = answers[i] !== null;
+        let isCorrect = isAttempted && answers[i] === q.a;
+        let cssClass = !isAttempted ? 'unattempted' : (isCorrect ? 'correct' : 'wrong');
+        
+        let chosenText = isAttempted ? q.oE[answers[i]] : "None";
+        let correctText = q.oE[q.a];
+        
+        let qText = q.qE.replace(/\n/g, "<br>");
+        let tagHtml = !isAttempted ? `<span class="answer-tag tag-unattempted">Unattempted</span>` : 
+                      isCorrect ? `<span class="answer-tag tag-correct">Correct (+1.0)</span>` : 
+                      `<span class="answer-tag tag-wrong">Incorrect (-0.33)</span>`;
+                      
+        let explanationText = q.exp || `The correct answer is ${correctText}.`;
+        
+        let itemHtml = `
+            <div class="review-item ${cssClass}">
+                <strong style="font-size: 1.1rem; color: #fff;">Q${i+1}: ${qText}</strong><br>
+                ${tagHtml}
+                <div style="margin-top: 15px; font-size: 0.95rem; display: grid; gap: 8px;">
+                    <div><span style="color: var(--text-secondary)">Your Answer:</span> <span style="color: ${!isAttempted ? '#9e9e9e' : isCorrect ? 'var(--color-answered)' : 'var(--color-not-answered)'}">${chosenText}</span></div>
+                    <div><span style="color: var(--text-secondary)">Correct Answer:</span> <span style="color: var(--color-answered); font-weight: bold;">${correctText}</span></div>
+                </div>
+                <div class="explanation-box">
+                    <strong style="color: var(--primary-cyan);">Explanation:</strong><br>
+                    ${explanationText}
+                </div>
+            </div>
+        `;
+        
+        if (!isAttempted) htmlUnattempted += itemHtml;
+        else if (isCorrect) htmlCorrect += itemHtml;
+        else htmlWrong += itemHtml;
+    });
+    
+    // Inject Content
+    document.getElementById('review-content-correct').innerHTML = htmlCorrect || "<div style='text-align:center; padding: 30px; color: var(--text-secondary);'>No correct answers recorded in this session.</div>";
+    document.getElementById('review-content-wrong').innerHTML = htmlWrong || "<div style='text-align:center; padding: 30px; color: var(--color-answered); font-weight: bold;'>Amazing job! You had no incorrect answers!</div>";
+    document.getElementById('review-content-unattempted').innerHTML = htmlUnattempted || "<div style='text-align:center; padding: 30px; color: var(--text-secondary);'>You attempted every single question. Great effort!</div>";
+    
+    // Setup Tab counts
+    document.getElementById('tab-count-correct').innerText = document.getElementById('res-correct').innerText;
+    document.getElementById('tab-count-wrong').innerText = document.getElementById('res-wrong').innerText;
+    document.getElementById('tab-count-unattempted').innerText = document.getElementById('res-unattempted').innerText;
+    
+    // Display Section
+    document.getElementById('post-exam-actions').style.display = 'none';
+    document.getElementById('detailed-review-section').style.display = 'block';
+    
+    // Default to the first tab that has data
+    if (htmlWrong) switchTab('wrong');
+    else if (htmlCorrect) switchTab('correct');
+    else switchTab('unattempted');
+}
+
+function switchTab(tabId) {
+    // Reset buttons and content visibility
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    
+    // Activate chosen tab
+    document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('active');
+    document.getElementById(`review-content-${tabId}`).classList.add('active');
+}
+</script>
+</body>
+</html>
+
+```
